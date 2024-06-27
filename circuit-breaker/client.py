@@ -1,3 +1,4 @@
+from math import log
 import requests
 import time
 import logging
@@ -7,6 +8,9 @@ STATE_CLOSED = "closed"
 STATE_HALF_OPEN = "half-open"
 
 logging.basicConfig(level=logging.INFO, format='INFO: %(message)s')
+
+class CircuitOpenException(Exception):
+    pass
 
 class CircuitBreaker:
 
@@ -20,55 +24,74 @@ class CircuitBreaker:
 
     def call(self, func, *args, **kwargs):
         current_time = time.time()
-        logging.info('Fail counter: %s', self.fail_counter)
-
         if self.state == STATE_OPEN:
-            logging.info('Circuit is OPEN')
             if (current_time - self.last_failure_time) > self.reset_timeout:
                 self.state = STATE_HALF_OPEN
+                logging.info("estado alterou de OPEN para HALF-OPEN")
             else:
-                raise Exception("Circuit is OPEN")
+                logging.info("Circuit is open")
+                raise CircuitOpenException()
 
         elif self.state == STATE_HALF_OPEN:
-            logging.info('Circuit is HALF_OPEN')
-            self.state = STATE_CLOSED
-            self.fail_counter = 0
-
-        else:
             try:
-                logging.info('STATE_CLOSED')
                 response = func(*args, **kwargs)
-                response.raise_for_status()  # Ensure we handle HTTP errors
+                response.raise_for_status()  
+                if response:
+                    logging.info('Response: %s', response.json())
+                    self.state = STATE_CLOSED
+                    self.last_failure_time = current_time
+                    self.fail_counter = 0
+                    logging.info("estado alterou de HALF-OPEN para CLOSED")
                 return response
 
             except (requests.exceptions.RequestException, requests.exceptions.HTTPError):
                 self.fail_counter += 1
                 self.last_failure_time = current_time
+                logging.info('Fail counter: %s', self.fail_counter)
+                self.state = STATE_OPEN
                 raise
+
+        else:
+            if(self.fail_counter >= self.fail_max):
+                self.state = STATE_OPEN
+                self.last_failure_time = current_time
+                logging.info("estado alterou de CLOSED para OPEN")
+            else:
+                try:
+                    response = func(*args, **kwargs)
+                    response.raise_for_status() 
+                    return response
+
+                except (requests.exceptions.RequestException, requests.exceptions.HTTPError):
+                    self.fail_counter += 1
+                    self.last_failure_time = current_time
+                    logging.info('Fail counter: %s', self.fail_counter)
+                    raise
 
 def get_data(breaker, key, timeout=30):
     try:
         response = breaker.call(requests.get, f'http://127.0.0.1:5000/data/{key}', timeout=timeout)
-        return response.json()
-    except requests.exceptions.RequestException:
-        return 'Service Unavailable'
-    except ValueError:
-        return 'Service Unavailable'
+        if response:
+            logging.info('Response: %s', response.json())
+            return response.json()
+    except CircuitOpenException:
+        return {"error": "Circuit is open"}
+    except (requests.exceptions.RequestException, ValueError) :
+        return {'error': 'Service Unavailable'}
 
 def set_data(breaker, key, value, timeout=5):
     try:
         response = breaker.call(requests.post, f'http://127.0.0.1:5000/data/{key}', json={'value': value}, timeout=timeout)
         return response.json()
-    except requests.exceptions.RequestException:
-        return 'Service Unavailable'
-    except ValueError:
-        return 'Service Unavailable'
+    except (requests.exceptions.RequestException, ValueError) :
+        return {'error': 'Service Unavailable'}
 
 if __name__ == '__main__':
-    breaker = CircuitBreaker(fail_max=3, reset_timeout=5)
+    breaker = CircuitBreaker(fail_max=3, reset_timeout=10)
 
-    print(set_data(breaker, 'testkey', 'testvalue'))
+    set_data(breaker, 'testkey', 'testvalue')
+    time.sleep(2)
 
-    for _ in range(10):
-        print('Recebido do servidor:', get_data(breaker, 'testkey'))
-        time.sleep(2)
+    for _ in range(50):
+        get_data(breaker, 'testkey')
+        time.sleep(1)
