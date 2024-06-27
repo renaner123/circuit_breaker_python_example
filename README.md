@@ -11,11 +11,13 @@ Referência: https://martinfowler.com/bliki/CircuitBreaker.html
 
 ## Configuração do Ambiente
 
+
 ### 1. Configuração do Ambiente Virtual
 
 É recomendado criar um ambiente virtual para isolar as dependências do projeto. Utilize o seguinte comando para criar e ativar um ambiente virtual:
 
 ```shell
+cd circuit-breaker
 python -m venv venv
 source venv/bin/activate # No Windows use venv\Scripts\activate
 ```
