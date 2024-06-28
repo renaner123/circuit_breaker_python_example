@@ -13,9 +13,9 @@ class CircuitOpenException(Exception):
 
 class CircuitBreaker:
 
-    def __init__(self, fail_max, reset_timeout) -> None:
+    def __init__(self, threshold, reset_timeout) -> None:
         logging.info('Circuit Breaker initialized')
-        self.fail_max = fail_max
+        self.threshold = threshold
         self.reset_timeout = reset_timeout
         self.fail_counter = 0
         self.state = STATE_CLOSED
@@ -52,7 +52,7 @@ class CircuitBreaker:
                 raise
 
         else:
-            if(self.fail_counter >= self.fail_max):
+            if(self.fail_counter >= self.threshold):
                 self.state = STATE_OPEN
                 self.last_failure_time = current_time
                 logging.info("estado alterou de CLOSED para OPEN")

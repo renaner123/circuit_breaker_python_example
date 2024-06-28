@@ -7,7 +7,9 @@ Desenvolva um sistema que utilize o padrão de projetos Circuit Breaker para ger
 3. Deve ser possível observar o comportamento dos componentes do sistema durante a execução do código;
 4. O provedor de dados deve simular falhas com base em um padrão conhecido ou obedecer a comandos do usuário, de modo a permitir testarmos o funcionamento do circuit breaker.
 
-Referência: https://martinfowler.com/bliki/CircuitBreaker.html
+Referências: 
+- https://martinfowler.com/bliki/CircuitBreaker.html
+- https://github.com/fabfuel/circuitbreaker
 
 ## Configuração do Ambiente
 
