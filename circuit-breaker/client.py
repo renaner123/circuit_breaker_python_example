@@ -6,9 +6,11 @@ from circuit_breaker import CircuitBreaker, CircuitOpenException
 
 logging.basicConfig(level=logging.INFO, format='INFO: %(message)s')
 
+HOST='http://127.0.0.1:5000'
+
 def get_data(breaker_call, key, timeout=30):
     try:
-        response = breaker_call.call(requests.get, f'http://127.0.0.1:5000/data/{key}', timeout=timeout)
+        response = breaker_call.call(requests.get, f'{HOST}/data/{key}', timeout=timeout)
         if response:
             logging.info('Response: %s', response.json())
             return response.json()
@@ -19,7 +21,7 @@ def get_data(breaker_call, key, timeout=30):
 
 def set_data(breaker_call, key, value, timeout=5):
     try:
-        response = breaker_call.call(requests.post, f'http://127.0.0.1:5000/data/{key}', json={'value': value}, timeout=timeout)
+        response = breaker_call.call(requests.post, f'{HOST}/data/{key}', json={'value': value}, timeout=timeout)
         return response.json()
     except (requests.exceptions.RequestException, ValueError):
         return {'error': 'Service Unavailable'}
